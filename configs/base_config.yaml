@@ -22,12 +22,15 @@ data:
     validation:
     testing:
 
-
-architecture:
-  name: resnet50
-  source: torchvision.models # use local for custom architectures
-  pretrained: true
-  weights_source: "age_resnet50.pth" # use torch for official weights or path for custom weights;
+model:
+  backbone:
+    name: resnet50
+    resnet50:
+      source: torchvision.models # use local for custom architectures
+      pretrained: true
+      weights_source: "weights/age_resnet50.pth" # use torch for official weights or path for custom weights;
+  wrapper:
+    name: const_offset
 
 
 optimizer:
@@ -41,7 +44,12 @@ training:
   num_epochs: 100
   patience: 15
   checkpoint_interval: 5
+  accumulation_steps: 1
 
 
 loss:
   type: l1
+
+
+log:
+  tensorboard: true

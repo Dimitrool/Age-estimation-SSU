@@ -8,7 +8,7 @@ import torch.nn.functional as F
 @dataclass
 class LossOutput:
     """Container for loss outputs."""
-    main_loss: torch.Tensor
+    loss: torch.Tensor
 
 
 class BaseLoss:
@@ -20,8 +20,28 @@ class BaseLoss:
             return (term * W).mean()
         return term.mean()
 
-    def __call__(self, u_pred: torch.Tensor, u_gt: torch.Tensor, W: torch.Tensor | None) -> LossOutput:
+    def __call__(self, age_pred: torch.Tensor, age_true: torch.Tensor, W: torch.Tensor | None) -> LossOutput:
         raise NotImplementedError("Subclasses must implement __call__ method.")
 
 
+class _Elementwise(BaseLoss):
+    def _penalty(self, diff: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
+
+    def __call__(self, age_pred, age_true, W) -> LossOutput:
+        resid = self._penalty(age_pred - age_true)
+        loss = self.weighted_mean(resid, W)
+        return LossOutput(loss=loss)
+
+
+class MSELoss(_Elementwise):
+    def _penalty(self, diff): return diff.pow(2)
+
+
+class L1Loss(_Elementwise):
+    def _penalty(self, diff): return diff.abs()
+
+
+class CustomLoss(_Elementwise):
+    def _penalty(self, diff): return diff.pow(2)
 

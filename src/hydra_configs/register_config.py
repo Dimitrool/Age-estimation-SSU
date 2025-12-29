@@ -4,31 +4,30 @@ from hydra.core.config_store import ConfigStore
 from src.constants import CONFIG_TEMPLATE_NAME
 
 
-
 def register_configs() -> None:
-    """
-    Registers the configuration schema with Hydra's ConfigStore.
-    Call this function at the top of your train.py before @hydra.main.
-    """
     cs = ConfigStore.instance()
 
-    # Registering 'base_config' as the primary node name allows 
-    # your YAML file to validate against this schema.
     cs.store(name=CONFIG_TEMPLATE_NAME, node=hc.BaseConfig)
 
-    # Register data configs
+    # Data
     cs.store(group="data", name="base_data", node=hc.DataConfig)
     cs.store(group="data/augmentations", name="base_augmentations", node=hc.AugmentationsConfig)
 
-    # Register architecture configs
-    cs.store(group="architecture", name="base_architecture", node=hc.ArchitectureConfig)
-    cs.store(group="architecture/resnet50", name="base_resnet50", node=hc.ResNet50Config)
+    # Model (Previously Architecture)
+    cs.store(group="model", name="base_model", node=hc.ModelConfig)
+    cs.store(group="model/backbone", name="base_backbone", node=hc.BackboneConfig)
+    cs.store(group="model/wrapper", name="base_wrapper", node=hc.WrapperConfig)
 
-    # Register training configs
+    cs.store(group="model/backbone/resnet50", name="base_resnet50", node=hc.ResNet50Config)
+
+    cs.store(group="model/wrapper/const_offset", name="base_const_offset", node=hc.ConstOffsetCorrectionWrapperConfig)
+    cs.store(group="model/wrapper/learnable_offset", name="base_learnable_offset", node=hc.LearnableOffsetCorrectionWrapperConfig)
+    cs.store(group="model/wrapper/delta_regression", name="base_delta_regression", node=hc.DeltaRegressionWrapperConfig)
+
+    # Training
     cs.store(group="training", name="base_training", node=hc.TrainingConfig)
     cs.store(group="optimizer", name="base_optimizer", node=hc.OptimizerConfig)
     cs.store(group="loss", name="base_loss", node=hc.LossConfig)
+    cs.store(group="log", name="base_log", node=hc.LogConfig)
 
-
-# Auto-register configs when module is imported
 register_configs()

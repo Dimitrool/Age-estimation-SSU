@@ -12,7 +12,7 @@ from src.data.read_data import read_input, read_self_augmented_input
 from src.constants import SPLIT_TO_PATH
 
 
-def build_data_loader(cfg: DictConfig, split: Literal["training", "validation", "testing"]):
+def build_data_loader(cfg: DictConfig, split: Literal["training", "validation", "testing"]) -> DataLoader:
     data_path = str(SPLIT_TO_PATH[split])
     if cfg.data.use_self_augmentation and split == "training":
         data = read_self_augmented_input(data_path)
