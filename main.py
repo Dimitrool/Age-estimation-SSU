@@ -12,8 +12,10 @@ from torchvision import transforms
 from tqdm import tqdm
 from typing import List
 from torch.utils.data import DataLoader
-from src.utils.filesystem_utils import save_list_to_path, read_input
-from src.data.ImagePairDataset import ImagePairDataset, collate_fn
+from src.data.read_data import read_input
+from src.utils.filesystem_utils import save_list_to_path
+from src.data.build_data_loader import collate_fn
+from src.data.ImagePairDataset import ImagePairDataset
 from plot_utils import plot_age_distribution_heatmap, plot_prediction_error_heatmap
 
 

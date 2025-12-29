@@ -1,8 +1,12 @@
 import torch
+import torch.nn as nn
+import torchvision.models as models
 
 
 
-
+class ConstOffsetCorrectionWrapper(nn.Module):
+    def __init__(self):
+        ...
 
 
 def get_model(model_file_path, device):

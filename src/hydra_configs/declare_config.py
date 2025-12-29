@@ -23,6 +23,8 @@ class DataConfig:
     image_size: int = 256
     batch_size: int = 32
     num_workers: int = 16
+    use_self_augmentation: bool = True
+    pairs_per_person_in_batch: int | None = 4
     augmentations: AugmentationsConfig = field(default_factory=AugmentationsConfig)
 
 

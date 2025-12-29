@@ -29,6 +29,7 @@ class ImagePairDataset(Dataset):
         self.true_age1s = data["age1"]
         self.face2_paths = data["face2_path"]
         self.true_age2s = data["age2"]
+        self.person_ids = data["person_id"]
         self.preprocess = preprocess
 
     def __len__(self) -> int:
@@ -67,4 +68,3 @@ class ImagePairDataset(Dataset):
         true_age2 = self.true_age1s[index]
         
         return tensor1, tensor2, true_age1, true_age2
-
