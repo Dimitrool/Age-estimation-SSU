@@ -33,6 +33,7 @@ def read_input(input_file_path: str) -> Dict[str, List]:
     face1_paths = []
     true_age1s = []
     face2_paths = []
+    true_age2s = []
 
     # Iterate through each creator and their list of pairs
     for creator_id, pairs in nested_data.items():
@@ -43,11 +44,13 @@ def read_input(input_file_path: str) -> Dict[str, List]:
             face1_paths.append(person_1['image_path'])
             true_age1s.append(person_1['age'])
             face2_paths.append(person_2['image_path'])
+            true_age2s.append(person_2['age'])
 
     flat_data = {
         "face1_path": face1_paths,
         "age1": true_age1s,
-        "face2_path": face2_paths
+        "face2_path": face2_paths,
+        "age2": true_age2s
     }
     
     return flat_data
