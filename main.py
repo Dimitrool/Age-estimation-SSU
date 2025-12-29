@@ -1,3 +1,7 @@
+"""
+Entrypoint for inference used for testing. 
+"""
+
 #!/usr/bin/env python3
 import argparse
 import json
@@ -6,10 +10,12 @@ import torch
 import numpy as np
 from torchvision import transforms
 from tqdm import tqdm
-from typing import List, Dict, Optional
+from typing import List
 from torch.utils.data import DataLoader
-from utils import save_list_to_path, read_input, ImagePairDataset, collate_fn
+from src.utils.filesystem_utils import save_list_to_path, read_input
+from src.data.ImagePairDataset import ImagePairDataset, collate_fn
 from plot_utils import plot_age_distribution_heatmap, plot_prediction_error_heatmap
+
 
 parser = argparse.ArgumentParser(description="Process input and output file paths.")
 parser.add_argument("input_file_path", type=str, help="Path to the input JSON file")
@@ -83,7 +89,7 @@ def run_baseline_solution(
             
             # Place the results back into the correct positions in the main results list
             results.extend([result.item() for result in final_predictions_age2])
-                
+
     return results
 
 
@@ -101,7 +107,7 @@ def main(args):
         upload_dir = os.environ.get("UPLOAD_DIR", ".")
         model_file_path = os.path.join(upload_dir, model_name)
     else:
-        model_file_path = model_name
+        model_file_path = os.path.join("models", model_name)
 
     jit_model = torch.jit.load(model_file_path, map_location=device)
     jit_model.eval()

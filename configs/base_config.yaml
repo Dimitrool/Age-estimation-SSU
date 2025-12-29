@@ -1,0 +1,45 @@
+defaults:
+  - base_config
+  - _self_
+
+experiment_name: resnet50_baseline
+
+data:
+  image_size: 256
+  batch_size: 32
+  num_workers: 16
+  augmentations:
+    training:
+      - name: random_horizontal_flip
+        params:
+          p: 0.5
+      - name: color_jitter
+        params:
+          brightness: 0.2
+          contrast: 0.2
+    validation:
+    testing:
+
+
+architecture:
+  name: resnet50
+  source: torchvision.models # use local for custom architectures
+  pretrained: true
+  weights_source: "age_resnet50.pth" # use torch for official weights or path for custom weights;
+
+
+optimizer:
+  lr: 1e-4
+  betas: [0.99, 0.9995]
+  weight_decay: 1e-5
+  scheduler_gamma: 0.995
+
+
+training:
+  num_epochs: 100
+  patience: 15
+  checkpoint_interval: 5
+
+
+loss:
+  type: l1
