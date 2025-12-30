@@ -1,7 +1,3 @@
-"""
-Entrypoint for inference used for testing. 
-"""
-
 #!/usr/bin/env python3
 import torch.nn as nn
 from omegaconf import OmegaConf, DictConfig
@@ -14,18 +10,18 @@ from torchvision import transforms
 from tqdm import tqdm
 from typing import List
 from torch.utils.data import DataLoader
+
 from src.models.get_model import get_pretrained_model
 from src.data.read_data import read_input
 from src.data.build_data_loader import collate_fn
 from src.data.ImagePairDataset import ImagePairDataset
 from src.evaluation.plot_utils import plot_age_distribution_heatmap, plot_prediction_error_heatmap
-from main_local_resume import get_config
 
-from src.constants import EXTERNAL_WEIGHTS, CONFIGS_PATH, PRODUCTION_PLOTS, HYDRA_OUTPUT
+from src.constants import FINAL_DIR, CONFIGS_PATH, PRODUCTION_PLOTS, HYDRA_OUTPUT
 
 
 WEIGHTS = {
-    "baseline": EXTERNAL_WEIGHTS / "age_resnet50.pth",
+    "baseline": FINAL_DIR / "age_resnet50.pth",
     "resnet50_1": HYDRA_OUTPUT / "resnet50_baseline" / "2025-12-30_12-56",
 }
 
@@ -41,6 +37,15 @@ parser.add_argument("output_file_path", nargs="?", default=None, type=str, help=
 parser.add_argument("--brute", action="store_true", help="Evaluation in Brute")
 parser.add_argument("--batch_size", type=int, default=32, help="Number of image pairs to process in a batch")
 parser.add_argument("--num_workers", type=int, default=8, help="Number of worker processes for data loading")
+
+
+def get_config(experiment_dir: Path) -> DictConfig:
+    config_path = experiment_dir / ".hydra" / "config.yaml"
+    if not config_path.exists():
+        raise FileNotFoundError(f"Hydra config not found at {config_path}")
+
+    cfg = DictConfig(OmegaConf.load(config_path))
+    return cfg
 
 
 def save_list_to_path(list: List, output_file_path: str) -> None:
@@ -116,7 +121,7 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    model_name = "resnet50_1"
+    model_name = "baseline"
     path_to_weights = WEIGHTS[model_name]
 
     if args.brute:

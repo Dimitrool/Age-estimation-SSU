@@ -11,14 +11,7 @@ data:
   use_self_augmentation: false
   pairs_per_person_in_batch: 4
   augmentations:
-    training:
-      - name: random_horizontal_flip
-        params:
-          p: 0.5
-      - name: color_jitter
-        params:
-          brightness: 0.2
-          contrast: 0.2
+    training: []
     validation: []
     testing: []
 
@@ -35,14 +28,14 @@ model:
       factor: 0.5
 
 optimizer:
-  lr: 1e-4
+  lr: 1e-5
   betas: [0.99, 0.9995]
-  weight_decay: 1e-5
+  weight_decay: 1e-4
   scheduler_gamma: 0.995
 
 training:
   use_full_dataset: false
-  num_epochs: 100
+  num_epochs: 20
   patience: 15
   checkpoint_interval: 5
   accumulation_steps: 1

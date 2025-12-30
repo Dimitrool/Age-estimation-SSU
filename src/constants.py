@@ -13,6 +13,7 @@ DATA_DIR = Path("test-cases/public/instances")
 PRODUCTION_PLOTS = Path("production_plots")
 HYDRA_OUTPUT = Path("results")
 EXTERNAL_WEIGHTS = HYDRA_OUTPUT / "weights"
+FINAL_DIR = Path("final")
 
 SPLIT_TO_PATH = {
     "training": DATA_DIR / "train_processed.json",
