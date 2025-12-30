@@ -5,8 +5,9 @@ import torch.nn as nn
 from omegaconf import DictConfig
 
 from src.data.build_data_loader import build_data_loader
-from src.constants import CHECKPOINTS_FOLDER_NAME
+from src.constants import CHECKPOINTS_FOLDER_NAME, BEST_CHECKPOINT_NAME, PLOTS_FOLDER_NAME, DATA_DIR
 from src.training.EpochAnalyzer import EpochAnalyzer
+from src.evaluation.evaluation import evaluate
 
 class Trainer:
     def __init__(self, cfg: DictConfig, model: nn.Module, loss_function, optimizer, scheduler, result_path, device):
@@ -17,6 +18,7 @@ class Trainer:
 
         self.trn_loader = build_data_loader(cfg, "training")
         self.val_loader = build_data_loader(cfg, "validation")
+        self.test_loader = build_data_loader(cfg, "testing")
 
         self.accumulation_steps = cfg.training.accumulation_steps
         self.checkpoint_interval = cfg.training.checkpoint_interval
@@ -26,6 +28,7 @@ class Trainer:
 
         self.step_index = self._get_step_index()
         self.checkpoints_dir = Path(result_path) / CHECKPOINTS_FOLDER_NAME
+        self.plots_dir = Path(result_path) / PLOTS_FOLDER_NAME
 
         self.epoch_analyzer = EpochAnalyzer(result_path, self.scheduler, cfg.log.tensorboard)
         self.device = device
@@ -33,15 +36,30 @@ class Trainer:
     def train(self):
         self.best_val_loss = float("inf")
         for epoch in range(self.start_epoch, self.epochs):
-            self.train_one_epoch(epoch)
+            self.train_one_epoch(self.trn_loader, epoch)
             self.validate_one_epoch(epoch)
+        
+        self.test_trained_model()
+    
+    def train_full_dataset(self):
+        for epoch in range(self.start_epoch, self.epochs):
+            trn_loss = self.train_one_epoch(self.trn_loader, epoch)
+            val_loss = self.train_one_epoch(self.val_loader, epoch)
+            test_loss = self.train_one_epoch(self.test_loader, epoch)
 
-    def train_one_epoch(self, epoch):
+            loss = (trn_loss + val_loss + test_loss) / 3
+            if self.best_val_loss > loss:
+                self.best_val_loss = loss
+                model_path = self.checkpoints_dir / BEST_CHECKPOINT_NAME
+                self._save_training_state(epoch, loss, model_path)
+                print(f"New best validation loss: {self.best_val_loss:.5f}")
+
+    def train_one_epoch(self, loader, epoch):
         self.model.train()
         self.step_index = self._get_step_index()
 
         self.epoch_analyzer.null_epoch_metrics()
-        for batch in tqdm(self.trn_loader, desc="Training"):
+        for batch in tqdm(loader, desc="Training"):
             img1, img2, true_age1, true_age2 = batch
 
             img1 = img1.to(self.device)
@@ -58,6 +76,7 @@ class Trainer:
 
         self.finish_train_epoch()
         self.epoch_analyzer.log_epoch("Train", epoch)
+        return self.epoch_analyzer.loss
 
     def validate_one_epoch(self, epoch):
         self.model.eval()
@@ -85,10 +104,26 @@ class Trainer:
         # Keep track of best model and save it in checkpoint format too
         if self.epoch_analyzer.loss < self.best_val_loss:
             self.best_val_loss = self.epoch_analyzer.loss
-            model_path = self.checkpoints_dir / "best_checkpoint.pth"
+            model_path = self.checkpoints_dir / BEST_CHECKPOINT_NAME
             self._save_training_state(epoch, self.epoch_analyzer.loss, model_path)
             print(f"New best validation loss: {self.best_val_loss:.5f}")
 
+    def test_trained_model(self):
+        results = []
+        with torch.no_grad():
+            for batch in tqdm(self.test_loader, desc="Testing"):
+                img1, img2, true_age1, true_age2 = batch
+
+                img1 = img1.to(self.device)
+                img2 = img2.to(self.device)
+                true_age1 = true_age1.to(self.device)
+                true_age2 = true_age2.to(self.device)
+
+                pred_age2 = self.model(img1, img2, true_age1)
+
+                results.extend([result.item() for result in pred_age2])
+         
+        evaluate(results, DATA_DIR, self.plots_dir)
 
     def accumulated_backward(self, loss: torch.Tensor):
         (loss / self.accumulation_steps).backward()

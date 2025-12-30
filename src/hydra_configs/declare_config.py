@@ -18,6 +18,7 @@ class AugmentationsConfig:
 # --- Data Config ---
 @dataclass
 class DataConfig:
+    use_full_dataset: bool = False
     image_size: int = 256
     batch_size: int = 32
     num_workers: int = 16

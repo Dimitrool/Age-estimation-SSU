@@ -5,6 +5,7 @@ from pathlib import Path
 LOGS_FILE_NAME = "training.log"
 CHECKPOINTS_FOLDER_NAME = "checkpoints"
 BEST_CHECKPOINT_NAME = "best_checkpoint.pth"
+PLOTS_FOLDER_NAME = "plots"
 
 # -------------------------------------- Paths realtive to project root --------------------------------------
 CONFIGS_PATH = Path("configs")

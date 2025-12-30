@@ -41,6 +41,7 @@ optimizer:
 
 
 training:
+  use_full_dataset: false
   num_epochs: 100
   patience: 15
   checkpoint_interval: 5

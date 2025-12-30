@@ -14,4 +14,3 @@ def save_list_to_path(list: List, output_file_path: str) -> None:
         # Write the values separated by spaces
         outfile.write(" ".join([str(val) for val in list]) + "\n")
 
-

@@ -38,7 +38,7 @@ class EpochAnalyzer:
         if self.steps == 0:
             self.loss = float("inf")
         else:
-            self.loss =          self.loss / self.steps
+            self.loss = self.loss / self.steps
 
     def _write_metrics_to_tensorboard(self, split, epoch):
         self.writer.add_scalar(f"{split}/Loss",    self.loss, epoch)

@@ -6,6 +6,7 @@ from typing import List
 def plot_age_distribution_heatmap(
     ages1: List[float],
     ages2: List[float],
+    result_path: str,
     bin_width: int = 5,
     min_age: int = 0,
     max_age: int = 100
@@ -68,13 +69,14 @@ def plot_age_distribution_heatmap(
     ax.set_yticklabels(tick_labels)
 
     plt.tight_layout()
-    plt.savefig("age_distribution.png", dpi=300)
+    plt.savefig(f"{result_path}/age_distribution.png", dpi=300)
     
 
 def plot_prediction_error_heatmap(
     ages1: List[float],
     ages2: List[float],
     predicted_ages2: List[float],
+    result_path: str,
     bin_width: int = 5
 ):
     """
@@ -161,4 +163,4 @@ def plot_prediction_error_heatmap(
     ax.tick_params(which='minor', bottom=False, left=False) # Hide minor ticks
 
     plt.tight_layout()
-    plt.savefig("age_error.png", dpi=300)
+    plt.savefig(f"{result_path}/age_error.png", dpi=300)
