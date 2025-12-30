@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-import torch.nn as nn
-from omegaconf import OmegaConf, DictConfig
 import argparse
 import json
+import pickle
+from pathlib import Path
 import os
 import torch
 import numpy as np
@@ -13,21 +13,22 @@ from torch.utils.data import DataLoader
 
 from src.models.get_model import get_pretrained_model
 from src.data.read_data import read_input
-from src.data.build_data_loader import collate_fn
 from src.data.ImagePairDataset import ImagePairDataset
 from src.evaluation.plot_utils import plot_age_distribution_heatmap, plot_prediction_error_heatmap
+from src.data.ImagePairDataset import collate_fn
 
-from src.constants import FINAL_DIR, CONFIGS_PATH, PRODUCTION_PLOTS, HYDRA_OUTPUT
+
+from src.constants import PRODUCTION_PLOTS, HYDRA_OUTPUT, PRODUCTION_CONFIGS_PATH
 
 
 WEIGHTS = {
-    "baseline": FINAL_DIR / "age_resnet50.pth",
+    "baseline":  Path("weights") / "age_resnet50.pth",
     "resnet50_1": HYDRA_OUTPUT / "resnet50_baseline" / "2025-12-30_12-56",
 }
 
 
 NAME_TO_CONFIG_PATH = {
-    "baseline": CONFIGS_PATH / "base_config.yaml",
+    "baseline": Path(PRODUCTION_CONFIGS_PATH, "resnet50_baseline.pkl"),
 }
 
 
@@ -37,15 +38,6 @@ parser.add_argument("output_file_path", nargs="?", default=None, type=str, help=
 parser.add_argument("--brute", action="store_true", help="Evaluation in Brute")
 parser.add_argument("--batch_size", type=int, default=32, help="Number of image pairs to process in a batch")
 parser.add_argument("--num_workers", type=int, default=8, help="Number of worker processes for data loading")
-
-
-def get_config(experiment_dir: Path) -> DictConfig:
-    config_path = experiment_dir / ".hydra" / "config.yaml"
-    if not config_path.exists():
-        raise FileNotFoundError(f"Hydra config not found at {config_path}")
-
-    cfg = DictConfig(OmegaConf.load(config_path))
-    return cfg
 
 
 def save_list_to_path(list: List, output_file_path: str) -> None:
@@ -64,7 +56,7 @@ def save_list_to_path(list: List, output_file_path: str) -> None:
 
 def run_baseline_solution(
     data: dict,
-    model: nn.Module,
+    model,
     device: torch.device,
     args: argparse.Namespace,
 ) -> List:
@@ -123,19 +115,17 @@ def main(args):
 
     model_name = "baseline"
     path_to_weights = WEIGHTS[model_name]
+    path_to_cfg = NAME_TO_CONFIG_PATH[model_name]
 
     if args.brute:
         upload_dir = os.environ.get("UPLOAD_DIR", ".")
-        model_file_path = os.path.join(upload_dir, path_to_weights)
-    else:
-        model_file_path = path_to_weights
+        path_to_weights = os.path.join(upload_dir, path_to_weights)
+        path_to_cfg = os.path.join(upload_dir, path_to_cfg)
 
-    if model_name in NAME_TO_CONFIG_PATH:
-        cfg = DictConfig(OmegaConf.load(NAME_TO_CONFIG_PATH[model_name]))
-    else:
-        cfg = DictConfig(get_config(path_to_weights))
+    with open(path_to_cfg, 'rb') as f:
+        cfg = pickle.load(f)
 
-    model = get_pretrained_model(cfg, model_file_path, device)
+    model = get_pretrained_model(cfg, path_to_weights, device)
     model.eval()
 
     predictions = run_baseline_solution(data, model, device, args)

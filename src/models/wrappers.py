@@ -74,7 +74,7 @@ class ConstOffsetCorrectionWrapper(nn.Module):
         pred_age1 = self.backbone(img1)
         pred_age2 = self.backbone(img2)
         
-        current_bias = true_age1 - pred_age1
+        current_bias = (true_age1 - pred_age1).detach()
         
         return pred_age2 + (current_bias * self.factor)
 
