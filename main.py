@@ -19,12 +19,14 @@ from src.data.read_data import read_input
 from src.data.build_data_loader import collate_fn
 from src.data.ImagePairDataset import ImagePairDataset
 from src.evaluation.plot_utils import plot_age_distribution_heatmap, plot_prediction_error_heatmap
+from main_local_resume import get_config
 
-from src.constants import EXTERNAL_WEIGHTS, CONFIGS_PATH, PRODUCTION_PLOTS
+from src.constants import EXTERNAL_WEIGHTS, CONFIGS_PATH, PRODUCTION_PLOTS, HYDRA_OUTPUT
 
 
 WEIGHTS = {
-    "baseline": EXTERNAL_WEIGHTS / "age_resnet50.pth"
+    "baseline": EXTERNAL_WEIGHTS / "age_resnet50.pth",
+    "resnet50_1": HYDRA_OUTPUT / "resnet50_baseline" / "2025-12-30_12-56",
 }
 
 
@@ -114,17 +116,21 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    model_name = "baseline"
+    model_name = "resnet50_1"
     path_to_weights = WEIGHTS[model_name]
+
     if args.brute:
         upload_dir = os.environ.get("UPLOAD_DIR", ".")
         model_file_path = os.path.join(upload_dir, path_to_weights)
     else:
         model_file_path = path_to_weights
 
-    cfg = DictConfig(OmegaConf.load(NAME_TO_CONFIG_PATH[model_name]))
+    if model_name in NAME_TO_CONFIG_PATH:
+        cfg = DictConfig(OmegaConf.load(NAME_TO_CONFIG_PATH[model_name]))
+    else:
+        cfg = DictConfig(get_config(path_to_weights))
 
-    model = get_pretrained_model(cfg, str(model_file_path), device)
+    model = get_pretrained_model(cfg, model_file_path, device)
     model.eval()
 
     predictions = run_baseline_solution(data, model, device, args)
@@ -147,8 +153,8 @@ def main(args):
             print(f"\nMean Absolute Error (MAE): {mae:.4f}")
             
             # --- VISUALIZATIONS ---            
-            plot_age_distribution_heatmap(true_ages1, ground_truth_ages2, str(PRODUCTION_PLOTS / model_name))
-            plot_prediction_error_heatmap(true_ages1, ground_truth_ages2, predictions, str(PRODUCTION_PLOTS / model_name))
+            plot_age_distribution_heatmap(true_ages1, ground_truth_ages2, PRODUCTION_PLOTS / model_name)
+            plot_prediction_error_heatmap(true_ages1, ground_truth_ages2, predictions, PRODUCTION_PLOTS / model_name)
 
         except FileNotFoundError:
             print("\nCould not find the solution file to calculate MAE and generate plots.")

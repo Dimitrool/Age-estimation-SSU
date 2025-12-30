@@ -2,11 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from typing import List
+from pathlib import Path
 
 def plot_age_distribution_heatmap(
     ages1: List[float],
     ages2: List[float],
-    result_path: str,
+    result_path: Path,
     bin_width: int = 5,
     min_age: int = 0,
     max_age: int = 100
@@ -21,6 +22,8 @@ def plot_age_distribution_heatmap(
         min_age (int): The minimum age for the axes (default 0).
         max_age (int): The maximum age for the axes (default 100).
     """
+    result_path.mkdir(exist_ok = True)
+
     # 1. Define the complete bin structure
     bins = np.arange(min_age, max_age + bin_width, bin_width)
 
@@ -76,7 +79,7 @@ def plot_prediction_error_heatmap(
     ages1: List[float],
     ages2: List[float],
     predicted_ages2: List[float],
-    result_path: str,
+    result_path: Path,
     bin_width: int = 5
 ):
     """
@@ -87,6 +90,7 @@ def plot_prediction_error_heatmap(
         ages2 (List[float]): True ages of Person 2 in each pair.
         predicted_ages2 (List[float]): Model's predicted ages for Person 2.
     """
+    result_path.mkdir(exist_ok = True)
     
     # 1. Define the complete bin structure for the 0-100 range
     min_age = 0

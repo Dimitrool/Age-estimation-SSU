@@ -13,8 +13,10 @@ from src.constants import SPLIT_TO_PATH
 
 
 def build_data_loader(cfg: DictConfig, split: Literal["training", "validation", "testing"]) -> DataLoader:
+    shuffle = (split == "training" or cfg.training.use_full_dataset)
+
     data_path = str(SPLIT_TO_PATH[split])
-    if cfg.data.use_self_augmentation and split == "training":
+    if cfg.data.use_self_augmentation and shuffle:
         data = read_self_augmented_input(data_path)
     else:
         data = read_input(data_path)
@@ -22,9 +24,8 @@ def build_data_loader(cfg: DictConfig, split: Literal["training", "validation", 
     preprocess = build_transforms(cfg.data.augmentations[split], cfg.data.image_size)
     dataset = ImagePairDataset(data, preprocess)
 
-    shuffle = (split == "training")
     ppl_per_batch = cfg.data.pairs_per_person_in_batch
-    if split == "training" and ppl_per_batch is not None and 0 < ppl_per_batch < cfg.data.batch_size and cfg.data.batch_size % ppl_per_batch == 0:
+    if shuffle and ppl_per_batch is not None and 0 < ppl_per_batch < cfg.data.batch_size and cfg.data.batch_size % ppl_per_batch == 0:
         sampler = IdentityBalancedSampler(
             dataset, 
             batch_size=cfg.data.batch_size, 
@@ -69,11 +70,12 @@ def collate_fn(batch):
               ages of the first faces.
     """
     # Unzip the batch into separate lists
-    tensors1, tensors2, true_age1s = zip(*batch)
-    
+    tensors1, tensors2, true_age1s, true_age2s = zip(*batch)
+
     # Stack the tensors and convert ages to tensors
     tensors1_stacked = torch.stack(tensors1)
     tensors2_stacked = torch.stack(tensors2)
     true_age1s_tensor = torch.tensor(true_age1s, dtype=torch.float32)
-        
-    return tensors1_stacked, tensors2_stacked, true_age1s_tensor
+    true_age2s_tensor = torch.tensor(true_age2s, dtype=torch.float32)
+
+    return tensors1_stacked, tensors2_stacked, true_age1s_tensor, true_age2s_tensor

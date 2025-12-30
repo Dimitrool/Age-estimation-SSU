@@ -51,7 +51,7 @@ class ResNet50BaselineWrapper(BaseBackboneWrapper):
 
         if self.training:
             # Use "Expected Value" (weighted average) so gradients can flow
-            predicted_age = torch.sum(posteriors * self.age_indices, dim=1)
+            predicted_age = torch.sum(posteriors * self.age_indices.to(posteriors.device), dim=1)
         else:
             # The median is the first class index where the CDF is >= 0.5
             # We use argmax on the boolean tensor, as it returns the index of the first 'True' value.

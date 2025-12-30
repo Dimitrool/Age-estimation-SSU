@@ -9,7 +9,7 @@ PLOTS_FOLDER_NAME = "plots"
 
 # -------------------------------------- Paths realtive to project root --------------------------------------
 CONFIGS_PATH = Path("configs")
-DATA_DIR = Path("test_cases/public/instances")
+DATA_DIR = Path("test-cases/public/instances")
 PRODUCTION_PLOTS = Path("production_plots")
 HYDRA_OUTPUT = Path("results")
 EXTERNAL_WEIGHTS = HYDRA_OUTPUT / "weights"

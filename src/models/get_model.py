@@ -9,7 +9,7 @@ import re
 
 import src.models.wrappers as wrp
 import src.models.architectures as arch # uses arch btw
-from src.constants import CHECKPOINTS_FOLDER_NAME
+from src.constants import CHECKPOINTS_FOLDER_NAME, MAX_AGE
 
 
 BASELINE_WRAPPER_REGISTRY = {
@@ -61,7 +61,7 @@ def get_backbone(backbone_cfg: DictConfig, device: torch.device, use_cfg_weights
         
         # Instantiate from torchvision
         if hasattr(models, model_name):
-            backbone = getattr(models, model_name)(weights=weights)
+            backbone = getattr(models, model_name)(num_classes = MAX_AGE, weights=weights)
         else:
             raise ValueError(f"Model {model_name} not found in torchvision.models")
 
@@ -72,7 +72,7 @@ def get_backbone(backbone_cfg: DictConfig, device: torch.device, use_cfg_weights
     elif source == "local":
         # Support for custom architectures defined in src.models.architectures
         if hasattr(arch, model_name):
-            backbone = getattr(arch, model_name)()
+            backbone = getattr(arch, model_name)(num_classes = MAX_AGE)
             if pretrained and weights_source and use_cfg_weights:
                 load_model_weights(backbone, Path(weights_source), device)
         else:
@@ -173,13 +173,13 @@ def get_checkpoint_path(results_path: Path, mode: Literal["best", "latest"]) -> 
 
     return max(files, key=extract_epoch_num)
 
-def get_pretrained_model(cfg: DictConfig, results_path: str, device):
-    use_backbone_weights = ("baseline" in results_path)
+def get_pretrained_model(cfg: DictConfig, results_path: Path, device):
+    use_backbone_weights = (".pth" in str(results_path))
 
     model = get_model(cfg, device, use_backbone_weights)
 
     if not use_backbone_weights:
-        path_to_weights = get_checkpoint_path(Path(results_path), "best")
+        path_to_weights = get_checkpoint_path(results_path, "best")
         load_model_weights(model, path_to_weights, device)
 
     return model

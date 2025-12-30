@@ -34,20 +34,20 @@ class IdentityBalancedSampler(Sampler):
             
         self.person_ids = list(self.indices_by_person.keys())
         
-        # Calculate how many batches we can make per epoch
-        self.length = len(data_source) // batch_size
+        # Number of batches per epoch
+        self.num_batches = len(data_source) // batch_size
 
     def __iter__(self):
         # Create a shuffled list of people for this epoch.
         # We ensure the pool is large enough to cover the required number of batches.
         # Calculation: (Total Batches * People Per Batch) / Total Unique People
-        multiplier = (self.length * self.num_identities_per_batch) // len(self.person_ids) + 1
+        multiplier = (self.num_batches * self.num_identities_per_batch) // len(self.person_ids) + 1
         people_pool = self.person_ids * multiplier
         np.random.shuffle(people_pool)
         
         iter_ptr = 0
         
-        for _ in range(self.length):
+        for _ in range(self.num_batches):
             batch_indices = []
             
             # Select P unique people for this batch
@@ -66,8 +66,9 @@ class IdentityBalancedSampler(Sampler):
                     replace=(len(available_indices) < self.samples_per_person)
                 )
                 batch_indices.extend(selected_indices)
-                
-            yield batch_indices
+
+            for idx in batch_indices:
+                yield idx
 
     def __len__(self):
-        return self.length
+        return len(self.data_source)

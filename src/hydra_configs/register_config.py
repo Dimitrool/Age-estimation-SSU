@@ -1,13 +1,11 @@
 import src.hydra_configs.declare_config as hc
 from hydra.core.config_store import ConfigStore
 
-from src.constants import CONFIG_TEMPLATE_NAME
-
 
 def register_configs() -> None:
     cs = ConfigStore.instance()
 
-    cs.store(name=CONFIG_TEMPLATE_NAME, node=hc.BaseConfig)
+    cs.store(name="baseline", node=hc.BaseConfig)
 
     # Data
     cs.store(group="data", name="base_data", node=hc.DataConfig)

@@ -7,6 +7,9 @@ from src.constants import CONFIGS_PATH, CONFIG_TEMPLATE_NAME
 from src.logging.logging import configure_logging
 from src.training.build_trainer import build_trainer
 
+# Import config registration to register structured configs with Hydra
+import src.hydra_configs.register_config  # noqa: F401
+
 
 @hydra.main(config_path=str(CONFIGS_PATH), config_name=CONFIG_TEMPLATE_NAME, version_base=None)
 def main(cfg: DictConfig):

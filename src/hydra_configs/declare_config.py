@@ -11,14 +11,13 @@ class AugmentationItem:
 
 @dataclass
 class AugmentationsConfig:
-    training: List[AugmentationItem] = field(default_factory=list)
-    validation: List[AugmentationItem] = field(default_factory=list)
-    testing: List[AugmentationItem] = field(default_factory=list)
+    training: List[AugmentationItem] = field(default_factory=lambda: [])
+    validation: List[AugmentationItem] = field(default_factory=lambda: [])
+    testing: List[AugmentationItem] = field(default_factory=lambda: [])
 
 # --- Data Config ---
 @dataclass
 class DataConfig:
-    use_full_dataset: bool = False
     image_size: int = 256
     batch_size: int = 32
     num_workers: int = 16
@@ -31,20 +30,20 @@ class DataConfig:
 class ResNet50Config:
     source: str = "torchvision.models"
     pretrained: bool = True
-    weights_source: str = "weights/age_resnet50.pth"
+    weights_source: str = "results/weights/age_resnet50.pth"
 
 
 @dataclass
 class HeadFunctionalConfig:
-    hidden_channels: List[int] = [16]
+    hidden_channels: list[int] = field(default_factory=lambda: [16])
     activation: str = "relu"
 
 
 @dataclass
 class HeadNetConfig:
-    hidden_channels: List[int] = [512]
+    hidden_channels: List[int] = field(default_factory=lambda: [512])
     activation: str = "relu"
-    dropout_p: List[float] = [0.4]
+    dropout_p: List[float] = field(default_factory=lambda: [0.4])
 
 
 @dataclass
@@ -84,7 +83,7 @@ class ModelConfig:
     Renamed from ArchitectureConfig.
     Contains the backbone (ResNet) and the wrapper strategy.
     """
-    backbone: ResNet50Config = field(default_factory=ResNet50Config)
+    backbone: BackboneConfig = field(default_factory=BackboneConfig)
     wrapper: WrapperConfig = field(default_factory=WrapperConfig)
 
 
@@ -98,6 +97,7 @@ class OptimizerConfig:
 
 @dataclass
 class TrainingConfig:
+    use_full_dataset: bool = False
     num_epochs: int = 100
     patience: int = 15
     checkpoint_interval: int = 5
@@ -123,6 +123,7 @@ class BaseConfig:
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     loss: LossConfig = field(default_factory=LossConfig)
+    log: LogConfig = field(default_factory=LogConfig)
 
     hydra: Any = field(default_factory=lambda: {
         "run": {
@@ -135,7 +136,7 @@ class BaseConfig:
         "job_logging": {
             "handlers": {
                 "file": {
-                    "filename": "training.log"
+                    "filename": f"{HYDRA_OUTPUT}/${{experiment_name}}/${{now:%Y-%m-%d_%H-%M}}/training.log"
                 }
             }
         }

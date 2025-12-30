@@ -59,7 +59,7 @@ class Trainer:
         self.step_index = self._get_step_index()
 
         self.epoch_analyzer.null_epoch_metrics()
-        for batch in tqdm(loader, desc="Training"):
+        for batch in tqdm.tqdm(loader, desc=f"Training {epoch}"):
             img1, img2, true_age1, true_age2 = batch
 
             img1 = img1.to(self.device)
@@ -83,7 +83,7 @@ class Trainer:
 
         self.epoch_analyzer.null_epoch_metrics()
         with torch.no_grad():
-            for batch in tqdm(self.val_loader, desc="Validation"):
+            for batch in tqdm.tqdm(self.val_loader, desc=f"Validation {epoch}"):
                 img1, img2, true_age1, true_age2 = batch
 
                 img1 = img1.to(self.device)
@@ -96,9 +96,11 @@ class Trainer:
                 loss_out = self.loss_function(pred_age2, true_age2)
 
                 self.epoch_analyzer.add(loss_out)
+        
+        self.epoch_analyzer.log_epoch("Val", epoch)
 
         checkpoint_path = self.checkpoints_dir / f"epoch_{epoch:04d}.pth"
-        (self.checkpoints_dir / CHECKPOINTS_FOLDER_NAME).mkdir(exist_ok=True)
+        (self.checkpoints_dir).mkdir(exist_ok=True)
         self._save_training_state(epoch, self.epoch_analyzer.loss, checkpoint_path)
 
         # Keep track of best model and save it in checkpoint format too
@@ -111,7 +113,7 @@ class Trainer:
     def test_trained_model(self):
         results = []
         with torch.no_grad():
-            for batch in tqdm(self.test_loader, desc="Testing"):
+            for batch in tqdm.tqdm(self.test_loader, desc="Testing"):
                 img1, img2, true_age1, true_age2 = batch
 
                 img1 = img1.to(self.device)
