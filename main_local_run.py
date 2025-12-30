@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 from pathlib import Path
 
 from src.constants import CONFIGS_PATH, CONFIG_TEMPLATE_NAME
-from src.utils.logging import configure_logging
+from src.logging.logging import configure_logging
 from src.training.build_trainer import build_trainer
 
 

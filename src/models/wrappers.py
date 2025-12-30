@@ -17,8 +17,7 @@ class BaseBackboneWrapper(nn.Module):
         self.feature_dim = 0
 
         self._calculate_feature_dim(img_size)
-
-        
+            
     def _calculate_feature_dim(self, img_size: int):
         """
         Runs a dummy forward pass to determine the output dimension of the feature extractor.

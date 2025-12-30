@@ -3,6 +3,8 @@ Entrypoint for inference used for testing.
 """
 
 #!/usr/bin/env python3
+import torch.nn as nn
+from omegaconf import OmegaConf, DictConfig
 import argparse
 import json
 import os
@@ -12,11 +14,23 @@ from torchvision import transforms
 from tqdm import tqdm
 from typing import List
 from torch.utils.data import DataLoader
+from src.models.get_model import get_pretrained_model
 from src.data.read_data import read_input
-from src.utils.filesystem_utils import save_list_to_path
 from src.data.build_data_loader import collate_fn
 from src.data.ImagePairDataset import ImagePairDataset
 from src.evaluation.plot_utils import plot_age_distribution_heatmap, plot_prediction_error_heatmap
+
+from src.constants import EXTERNAL_WEIGHTS, CONFIGS_PATH, PRODUCTION_PLOTS
+
+
+WEIGHTS = {
+    "baseline": EXTERNAL_WEIGHTS / "age_resnet50.pth"
+}
+
+
+NAME_TO_CONFIG_PATH = {
+    "baseline": CONFIGS_PATH / "base_config.yaml",
+}
 
 
 parser = argparse.ArgumentParser(description="Process input and output file paths.")
@@ -27,9 +41,23 @@ parser.add_argument("--batch_size", type=int, default=32, help="Number of image 
 parser.add_argument("--num_workers", type=int, default=8, help="Number of worker processes for data loading")
 
 
+def save_list_to_path(list: List, output_file_path: str) -> None:
+    """
+    Save a list of numbers to a text file.
+    
+    Args:
+        list (List): The list to save.
+        output_file_path (str): Path to the output file.
+    """
+    # Open the output file to write the results
+    with open(output_file_path, 'w') as outfile:
+        # Write the values separated by spaces
+        outfile.write(" ".join([str(val) for val in list]) + "\n")
+
+
 def run_baseline_solution(
     data: dict,
-    model: torch.jit.ScriptModule,
+    model: nn.Module,
     device: torch.device,
     args: argparse.Namespace,
 ) -> List:
@@ -64,32 +92,14 @@ def run_baseline_solution(
 
     with torch.no_grad():
         for batch in tqdm(dataloader, desc="Processing Image Batches"):
-            tensors1, tensors2, true_age1s = batch
+            tensors1, tensors2, true_age1s, true_age1s = batch
             
             # Move data to the target device (GPU)
             tensors1 = tensors1.to(device)
             tensors2 = tensors2.to(device)
             true_age1s = true_age1s.to(device)
             
-            # Combine tensors for a single model pass: [face1_img1, ..., face1_imgN, face2_img1, ..., face2_imgN]
-            input_batch = torch.cat([tensors1, tensors2])
-
-            # Get model predictions
-            risks, labels, posteriors = model.get_prediction(input_batch)
-            predicted_ages = labels.get("age").squeeze()
-
-            # Split predictions back into face1 and face2 groups
-            num_valid_in_batch = tensors1.shape[0]
-            predicted_age1s = predicted_ages[:num_valid_in_batch]
-            predicted_age2s = predicted_ages[num_valid_in_batch:]
-
-            # 1. Calculate offsets for the entire batch
-            offsets = true_age1s - predicted_age1s
-
-            # 2. Apply offsets to get final predictions. We only use half of the offset, a more conservative compensation
-            final_predictions_age2 = predicted_age2s + offsets / 2.0
-            
-            # Place the results back into the correct positions in the main results list
+            final_predictions_age2 = model(tensors1, tensors2, true_age1s)
             results.extend([result.item() for result in final_predictions_age2])
 
     return results
@@ -104,17 +114,20 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    model_name = "age_resnet50.jit"
+    model_name = "baseline"
+    path_to_weights = WEIGHTS[model_name]
     if args.brute:
         upload_dir = os.environ.get("UPLOAD_DIR", ".")
-        model_file_path = os.path.join(upload_dir, model_name)
+        model_file_path = os.path.join(upload_dir, path_to_weights)
     else:
-        model_file_path = os.path.join("models", model_name)
+        model_file_path = path_to_weights
 
-    jit_model = torch.jit.load(model_file_path, map_location=device)
-    jit_model.eval()
+    cfg = DictConfig(OmegaConf.load(NAME_TO_CONFIG_PATH[model_name]))
 
-    predictions = run_baseline_solution(data, jit_model, device, args)
+    model = get_pretrained_model(cfg, str(model_file_path), device)
+    model.eval()
+
+    predictions = run_baseline_solution(data, model, device, args)
 
     print(f"\nGenerated {len(predictions)} predictions.")
     
@@ -134,8 +147,8 @@ def main(args):
             print(f"\nMean Absolute Error (MAE): {mae:.4f}")
             
             # --- VISUALIZATIONS ---            
-            plot_age_distribution_heatmap(true_ages1, ground_truth_ages2)
-            plot_prediction_error_heatmap(true_ages1, ground_truth_ages2, predictions)
+            plot_age_distribution_heatmap(true_ages1, ground_truth_ages2, str(PRODUCTION_PLOTS / model_name))
+            plot_prediction_error_heatmap(true_ages1, ground_truth_ages2, predictions, str(PRODUCTION_PLOTS / model_name))
 
         except FileNotFoundError:
             print("\nCould not find the solution file to calculate MAE and generate plots.")

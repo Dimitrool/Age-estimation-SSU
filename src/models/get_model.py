@@ -1,11 +1,15 @@
 import os
 import torch
 import torch.nn as nn
+from pathlib import Path
 import torchvision.models as models
 from omegaconf import DictConfig
+from typing import Literal
+import re
 
 import src.models.wrappers as wrp
 import src.models.architectures as arch # uses arch btw
+from src.constants import CHECKPOINTS_FOLDER_NAME
 
 
 BASELINE_WRAPPER_REGISTRY = {
@@ -13,7 +17,7 @@ BASELINE_WRAPPER_REGISTRY = {
 }
 
 
-def load_weights(model: nn.Module, weights_source: str, device: torch.device):
+def load_model_weights(model: nn.Module, weights_source: Path, device: torch.device):
     """
     Loads weights into the model from a file path.
     """
@@ -34,7 +38,7 @@ def load_weights(model: nn.Module, weights_source: str, device: torch.device):
     else:
         print(f"Warning: Weights file not found at {weights_source}. Using random init.")
 
-def get_backbone(backbone_cfg: DictConfig, device: torch.device) -> nn.Module:
+def get_backbone(backbone_cfg: DictConfig, device: torch.device, use_cfg_weights: bool = True) -> nn.Module:
     """
     Instantiates the backbone model (e.g., ResNet50).
     """
@@ -51,7 +55,7 @@ def get_backbone(backbone_cfg: DictConfig, device: torch.device) -> nn.Module:
     if source == "torchvision.models":
         # Check if we use official weights or random init
         weights = None
-        if pretrained and weights_source == "torch":
+        if pretrained and weights_source == "torch" and use_cfg_weights:
             # Use default (best available) official weights
             weights = "DEFAULT" 
         
@@ -62,21 +66,29 @@ def get_backbone(backbone_cfg: DictConfig, device: torch.device) -> nn.Module:
             raise ValueError(f"Model {model_name} not found in torchvision.models")
 
         # If pretrained is True but source is NOT "torch", we load custom weights file
-        if pretrained and weights_source != "torch":
-            load_weights(backbone, weights_source, device)
+        if pretrained and weights_source != "torch" and use_cfg_weights:
+            load_model_weights(backbone, Path(weights_source), device)
 
     elif source == "local":
         # Support for custom architectures defined in src.models.architectures
         if hasattr(arch, model_name):
             backbone = getattr(arch, model_name)()
-            if pretrained and weights_source:
-                load_weights(backbone, weights_source, device)
+            if pretrained and weights_source and use_cfg_weights:
+                load_model_weights(backbone, Path(weights_source), device)
         else:
             raise ValueError(f"Custom model {model_name} not found in src.models.architectures")
     else:
         raise ValueError(f"Unknown model source: {source}")
 
     return backbone
+
+def wrap_with_postprocessing(cfg: DictConfig, backbone: nn.Module, device) -> wrp.BaseBackboneWrapper:
+    if cfg.model.backbone.name not in BASELINE_WRAPPER_REGISTRY:
+        raise ValueError(f"Unknown model: {cfg.model.backbone.name}")
+
+    baseline_wrapper = BASELINE_WRAPPER_REGISTRY[cfg.model.backbone.name](backbone, cfg.data.image_size)
+    baseline_wrapper.to(device)
+    return baseline_wrapper
 
 def build_head(head_cfg: DictConfig, in_channels: int, out_channels: int) -> nn.Module:
     """
@@ -124,20 +136,16 @@ def wrap_baseline_wrapper(wrapper_cfg: DictConfig, baseline_wrapper: wrp.BaseBac
     
     return model
 
-def get_model(cfg: DictConfig, device: torch.device) -> nn.Module:
+def get_model(cfg: DictConfig, device: torch.device, load_model_weights = True) -> nn.Module:
     """
     Main entry point to build the full model pipeline.
     """
     # 1. Instantiate the Backbone (e.g., ResNet50)
-    backbone = get_backbone(cfg.model.backbone, device)
+    backbone = get_backbone(cfg.model.backbone, device, load_model_weights)
 
     # 2. Wrap it in the Baseline Wrapper (Features + Logits)
     # This wrapper handles the separation of features and classification head
-    if cfg.model.backbone.name not in BASELINE_WRAPPER_REGISTRY:
-        raise ValueError(f"Unknown model: {cfg.model.backbone.name}")
-
-    baseline_wrapper = BASELINE_WRAPPER_REGISTRY[cfg.model.backbone.name](backbone, cfg.data.image_size)
-    baseline_wrapper.to(device)
+    baseline_wrapper = wrap_with_postprocessing(cfg, backbone, device)
 
     # 3. Apply the Logic Wrapper (Strategy)
     model = wrap_baseline_wrapper(cfg.model.wrapper, baseline_wrapper)
@@ -145,5 +153,34 @@ def get_model(cfg: DictConfig, device: torch.device) -> nn.Module:
     model.to(device)
     return model
 
+def get_checkpoint_path(results_path: Path, mode: Literal["best", "latest"]) -> Path:
+    """Finds the checkpoint with the highest epoch number (epoch_XXXX.pth)."""
+    experiment_dir = results_path / CHECKPOINTS_FOLDER_NAME
 
+    if mode == "best":
+        return experiment_dir / "best_checkpoint.pth"
+
+    # Look for files matching epoch_*.pth
+    files = list(experiment_dir.glob("epoch_*.pth"))
+
+    if not files:
+        raise FileNotFoundError(f"Checkpointa were not found at {experiment_dir}")
+
+    def extract_epoch_num(file_path):
+        # Extract integer from filename (e.g., 0010 from epoch_0010.pth)
+        match = re.search(r'(\d+)', file_path.name)
+        return int(match.group(1)) if match else -1
+
+    return max(files, key=extract_epoch_num)
+
+def get_pretrained_model(cfg: DictConfig, results_path: str, device):
+    use_backbone_weights = ("baseline" in results_path)
+
+    model = get_model(cfg, device, use_backbone_weights)
+
+    if not use_backbone_weights:
+        path_to_weights = get_checkpoint_path(Path(results_path), "best")
+        load_model_weights(model, path_to_weights, device)
+
+    return model
 

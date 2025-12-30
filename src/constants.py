@@ -10,9 +10,9 @@ PLOTS_FOLDER_NAME = "plots"
 # -------------------------------------- Paths realtive to project root --------------------------------------
 CONFIGS_PATH = Path("configs")
 DATA_DIR = Path("test_cases/public/instances")
-PRODUCTION_MODELS = Path("production_models")
+PRODUCTION_PLOTS = Path("production_plots")
 HYDRA_OUTPUT = Path("results")
-
+EXTERNAL_WEIGHTS = HYDRA_OUTPUT / "weights"
 
 SPLIT_TO_PATH = {
     "training": DATA_DIR / "train_processed.json",
